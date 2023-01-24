@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_policy_action">
+    <sys_ui_policy_action action="INSERT_OR_UPDATE">
+        <cleared>false</cleared>
+        <disabled>ignore</disabled>
+        <field>table</field>
+        <mandatory>true</mandatory>
+        <sys_class_name>sys_ui_policy_action</sys_class_name>
+        <sys_created_by>ivan.contreras</sys_created_by>
+        <sys_created_on>2023-01-16 10:57:57</sys_created_on>
+        <sys_id>94b6936fdbd021100f1d6a5f0596196f</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>table</sys_name>
+        <sys_package display_value="QR code management" source="x_cans_qr_code_mgt">64c4ac721b54a51460987597dc4bcb70</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="QR code management">64c4ac721b54a51460987597dc4bcb70</sys_scope>
+        <sys_update_name>sys_ui_policy_action_94b6936fdbd021100f1d6a5f0596196f</sys_update_name>
+        <sys_updated_by>ivan.contreras</sys_updated_by>
+        <sys_updated_on>2023-01-16 10:57:57</sys_updated_on>
+        <table>x_cans_qr_code_mgt_qr_code_generator</table>
+        <ui_policy display_value="Always">ebfa647e1b54a51460987597dc4bcb60</ui_policy>
+        <visible>ignore</visible>
+    </sys_ui_policy_action>
+</record_update>

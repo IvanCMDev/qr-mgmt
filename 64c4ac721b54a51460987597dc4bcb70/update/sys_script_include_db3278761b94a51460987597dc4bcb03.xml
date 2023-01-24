@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>public</access>
+        <active>true</active>
+        <api_name>x_cans_qr_code_mgt.QRCodeGeneratorUtils</api_name>
+        <caller_access/>
+        <client_callable>true</client_callable>
+        <description/>
+        <name>QRCodeGeneratorUtils</name>
+        <script><![CDATA[var QRCodeGeneratorUtils = Class.create();
+QRCodeGeneratorUtils.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+	
+	/* ajax functions */
+	/**************************************************/	
+	ajaxFunction_getPrintQRDetails: function() {
+        var configID = this.getParameter("sysparm_sys_id");
+        var count = this.getValidElementsCount(configID);
+        var printLayout = this.getPrintLayout();
+        return JSON.stringify({
+            'count': count,
+            'printLayout': printLayout
+        });
+    },
+	
+	
+	/* Server functions */
+	/**************************************************/
+
+	// show Print QR Codes UI Action on Generated QR record form
+	displayPrintQRCodesButton: function(grConfig) {
+        return grConfig.canWrite() && grConfig.state == "ready" && this.getValidElementsCount(grConfig.getUniqueValue()) > 0;
+    },
+	
+	// get count of all the valid restaurants which satisfies the given condition
+	getValidElementsCount: function(configID){
+		var count = 0;
+		
+		if (global.JSUtil.notNil(configID)){
+			var grConfig = new GlideRecord("x_cans_qr_code_mgt_qr_code_generator");
+			if (grConfig.get(configID)){
+				var tableName = grConfig.table;
+				var conditions = grConfig.conditions;
+				
+				var gr = new GlideRecord(tableName);
+				gr.addEncodedQuery(conditions);
+				gr.query();
+				count = gr.getRowCount();
+			}
+			else
+			gs.log("getValidElementsCount - configuration not found for sys_id "+configID,"QRCodeGeneratorUtils");
+		}
+		
+		return count;
+	},
+	
+	// get Print layout of Generated QR
+	getPrintLayout: function() {
+        return "1";
+    },
+	
+	// call Event to create and download QR codes	
+	generateQREvent: function(printConfig) {
+		var recordId = printConfig.qrGenerated_id;
+		var table = printConfig.qrGenerated_table;
+        var grTable = new GlideRecord(table);
+		
+        if (grTable.get(recordId)) {
+			this._setStateToInProgress(grTable);
+            gs.eventQueue('x_cans_qr_code_mgt.qr_print_configuratio', grTable, JSON.stringify(printConfig));
+        } else
+			gs.log("generateQREvent - Configuration not found for sys_id "+recordId,"QRCodeGeneratorUtils");
+    },
+	
+	// set state to In Progress for Generated QR Glide Record
+	_setStateToInProgress: function(qrGeneratedGR) {
+        qrGeneratedGR.setValue("state", "in_progress");
+        qrGeneratedGR.update();
+    },
+	
+	// set state to Completed for Generated QR Glide Record
+	_setStateToComplete: function(qrGeneratedGR) {
+        qrGeneratedGR.setValue("state", "completed");
+        qrGeneratedGR.update();
+    },
+	
+	// create and download QR codes
+	generateAndPrintQRCodes: function(qrGeneratedGR, qrPrintConfiguration) {
+        // Generating QR Codes
+        var qrData = this._generateQRCodes(qrGeneratedGR, qrPrintConfiguration);
+
+        // Generate PDF
+        var qrGridGenerator = new x_cans_qr_code_mgt.QRCodeGeneratorGridUtils(qrPrintConfiguration.qrGenerated_table, qrPrintConfiguration.qrGenerated_id, qrData.print_format, qrData.layout, qrData.config_name, qrData.qrCodes, qrGeneratedGR.table);
+        qrGridGenerator.generate();
+		
+		// Setting state to complete
+		this._setStateToComplete(qrGeneratedGR);
+    },
+	
+	// generate Object for QRs and configuration
+	_generateQRCodes: function(qrGeneratedGR, qrPrintConfiguration) {
+        var result = {};
+        result.config_name = qrPrintConfiguration.config_name;
+        result.record_id = qrGeneratedGR.getUniqueValue();
+        result.print_format = qrPrintConfiguration.print_format;
+        result.layout = qrPrintConfiguration.layout;
+        result.table = qrGeneratedGR.table;
+		
+        var validRecords = this._getValidRecords(qrGeneratedGR);
+        var qrCodes = this._getQRCodes(qrGeneratedGR, validRecords);
+        result.qrCodes = qrCodes;
+        result.count = Object.keys(qrCodes).length;
+        return result;
+    },
+	
+	// get all the valid equipments from restaurant
+	_getValidRecords: function(qrGeneratedGR) {
+        var tableName = qrGeneratedGR.table;
+		var condition = qrGeneratedGR.conditions;
+        var validRecords = {};
+        var gr = new GlideRecord(tableName);
+        gr.addEncodedQuery(condition);
+//         gr.orderBy("model_id.type");
+        gr.query();
+        while (gr.next())
+            validRecords[gr.getValue("sys_id")] = true;
+
+        return Object.keys(validRecords);
+    },
+	
+	// QR codes for given records
+	_getQRCodes: function(qrGeneratedGR, validRecordIds) {
+        var qrCodes = {};
+        for (var i = 0; i < validRecordIds.length; i++) {
+            var qrCode = this._getQRCode(qrGeneratedGR, validRecordIds[i]);
+            qrCodes[validRecordIds[i]] = qrCode;
+        }
+        return qrCodes;
+    },
+	
+	// Generate QR Code for given data
+	_getQRCode: function(qrGeneratedGR, recordId) {
+        var typeNumber = 0;
+        var errorCorrectionLevel = 'L';
+        var qr = new x_cans_qr_code_mgt.qrcode(typeNumber, errorCorrectionLevel);
+        qr.addData(this._getQRInputData(qrGeneratedGR, recordId));
+        qr.make();
+        var output = qr.createImgTag(3, 1) + '';
+// 		var output = qr.createSvgTag(3, 1) + '';
+        output = output.slice(output.indexOf('src="') + 5);
+        var qrCodeLink = output.slice(0, output.indexOf('"'));
+        return qrCodeLink;
+    },
+	
+	// generate url for QR code
+	_getQRInputData: function(qrGeneratedGR, recordId) {
+		var table = qrGeneratedGR.table;
+		
+		// build url
+		var link = table + '.do?sys_id=' + recordId;
+		var instance = gs.getProperty('glide.servlet.uri');
+		var qrLink = instance+link;
+		
+		return qrLink;
+    },
+	
+    type: 'QRCodeGeneratorUtils'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>ivan.contreras</sys_created_by>
+        <sys_created_on>2023-01-13 15:05:46</sys_created_on>
+        <sys_id>db3278761b94a51460987597dc4bcb03</sys_id>
+        <sys_mod_count>15</sys_mod_count>
+        <sys_name>QRCodeGeneratorUtils</sys_name>
+        <sys_package display_value="QR code management" source="x_cans_qr_code_mgt">64c4ac721b54a51460987597dc4bcb70</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="QR code management">64c4ac721b54a51460987597dc4bcb70</sys_scope>
+        <sys_update_name>sys_script_include_db3278761b94a51460987597dc4bcb03</sys_update_name>
+        <sys_updated_by>ivan.contreras</sys_updated_by>
+        <sys_updated_on>2023-01-16 10:42:30</sys_updated_on>
+    </sys_script_include>
+</record_update>

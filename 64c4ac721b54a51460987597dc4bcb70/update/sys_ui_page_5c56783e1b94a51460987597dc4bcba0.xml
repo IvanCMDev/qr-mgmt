@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_page">
+    <sys_ui_page action="INSERT_OR_UPDATE">
+        <category>general</category>
+        <client_script><![CDATA[var layout = {};
+layout[1] = "qr_preview_1.png";
+layout[2] = "qr_preview_2.png";
+layout[3] = "qr_preview_3.png";
+layout[4] = "qr_preview_4.png";
+layout[5] = "qr_preview_5.png";
+
+gel('layout').setValue(document.getElementById('selected_print_layout').value);
+var selectedLayout = document.getElementById('selected_print_layout').value;
+document.getElementById('preview_image').src = layout[selectedLayout];
+document.getElementById("config_name").focus();
+
+function generateQRCodes() {
+    if (isValid())
+        document.getElementById('save_submit').click();
+}
+
+function isValid() {
+    clearError();
+    var name = document.getElementById('config_name').value;
+    if (name == '') {
+        displayError(getMessage('Please enter a file name for the QR code.'));
+        return false;
+    }
+    return true;
+}
+
+function changeLayout(event) {
+    document.getElementById('preview_image').src = layout[event.value];
+}
+
+function configNameChange(event) {
+    if (event.value.length > 0)
+        document.getElementById('marker').classList.add('marker-black');
+    else
+        document.getElementById('marker').classList.remove('marker-black');
+}
+
+function closeDialog() {
+    GlideDialogWindow.get().destroy();
+}]]></client_script>
+        <description/>
+        <direct>false</direct>
+        <endpoint>x_cans_qr_code_mgt_qr_print_configuration.do</endpoint>
+        <html><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<j:jelly xmlns:j="jelly:core" xmlns:g="glide" xmlns:g2="null" xmlns:j2="null" trim="false">
+
+	<style type="text/css">
+		img {
+		max-width: 100%;
+		max-height: 100%;
+		}
+
+		.action-buttons {
+		text-align: end;
+		}
+
+		.control-label {
+		text-align: right;
+		}
+
+		.mb{
+		margin-bottom: 10px;
+		}
+
+		.required-marker:before {
+		padding: 0 5px 0 0;
+		}
+
+		.marker-black:before {
+		color: black;
+		}
+
+		#print_format_section {
+		display:flex; 
+		justify-content: space-between;
+		}
+
+	</style>
+	<g:macro_invoke macro="$pwd_error_message" error_message="" />
+	<g:ui_form id="qr_config_form">
+		<g:evaluate var="jvar_gr" object="true">
+			var choices = {};
+			var gr = new GlideRecord('sys_choice');
+			gr.addQuery('name', 'x_cans_qr_code_mgt_qr_code_generator');
+			gr.addQuery('element', 'print_layout');
+			gr.addQuery('language', 'en');
+			gr.orderBy('sequence');
+			gr.query();
+			while(gr.next()) {
+			var key = gr.getValue('value');
+			var value = gr.getValue('label');
+			choices[key] = value;
+			}
+
+			if(gs.getSession().getLanguage() != 'en') {
+				gr = new GlideRecord('sys_choice');
+				gr.addQuery('name', 'x_cans_qr_code_mgt_qr_code_generator');
+				gr.addQuery('element', 'print_layout');
+				gr.addQuery('language', gs.getSession().getLanguage());
+				gr.orderBy('sequence');
+				gr.query();
+				while(gr.next()) {
+					var key = gr.getValue('value');
+					var value = gr.getValue('label');
+					choices[key] = value;
+				}
+			}
+
+			var keys = Object.keys(choices);
+			keys;
+		</g:evaluate>
+		<div class="col-xs-5">
+			<div class="row mb">
+				<div>
+					<span mandatory="true" id="marker" class="required-marker" style="display: inline;" />
+					<span class="label-text">${gs.getMessage('Enter file name')}</span>
+				</div>
+				<div>
+					<input type="text" onChange="configNameChange(this)" style="width: 100%; overflow: hidden; resize: none;" data-type="string"
+						   id="config_name" name="config_name" aria-required="true" maxlength="40"
+						   class="form-control"></input>
+				</div>
+			</div>
+			<div class="row mb">
+				<div>
+					<span class="label-text">${gs.getMessage('Number of elements')}</span>
+				</div>
+				<div>
+					<input type="text" style="width: 100%; overflow: hidden; resize: none;" data-type="string"
+						   id="count" name="count" aria-required="true" maxlength="40" class="form-control"
+						   readonly="readonly" value="${JS:sysparm_count}" ></input>
+				</div>
+			</div>
+			<div class="row mb">
+				<div>
+					<span class="label-text">${gs.getMessage('Label layout')}</span>
+				</div>
+				<select aria-required="false" aria-labelledby="label-layout" ng-non-bindable="true" name="layout"
+						id="layout" class="form-control" onchange="changeLayout(this)">
+					<j:forEach items="${keys}" var="jvar_key">
+						<g:evaluate jelly="true">
+							field_key = jelly.jvar_key;
+						</g:evaluate>
+						<option value="${field_key}">${choices[field_key]}</option>
+					</j:forEach> 
+				</select>
+			</div>
+		</div>
+		<div class="col-xs-7">	
+			<div>
+				<div class="col-xs-2"></div>
+				<div class="col-xs-8">
+					<img id="preview_image"
+						 src="cap_qr_preview_1.png" />
+				</div>
+				<div class="col-xs-2"></div>
+			</div>
+		</div>
+
+		<div class="row" style="padding: 0 8px" >
+			<div class="col-xs-6"></div>
+			<div class="col-xs-6">
+				<input type="hidden" id="configId" name="configId" value="${JS:sysparm_configId}" />
+				<input type="hidden" id="selected_print_layout" name="selected_print_layout" value="${JS:sysparm_print_layout}" />
+				<input type="hidden" id="selected_print_format" name="selected_print_format" value="pdf"/>
+				<input type="submit" style="display:none" id="save_submit" name="save_submit" value="submit" />
+				<div class="action-buttons">
+					<g:dialog_buttons_ok_cancel ok="return generateQRCodes()" ok_type="button"
+												ok_text="${gs.getMessage('Print')}" cancel="return closeDialog()" cancel_type="button" />
+				</div>
+			</div>
+		</div>
+	</g:ui_form>
+
+</j:jelly>]]></html>
+        <name>qr_print_configuration</name>
+        <processing_script><![CDATA[var confId = configId;
+var confTable = "x_cans_qr_code_mgt_qr_code_generator";
+
+var url = '/' + confTable + '.do?sys_id=' + confId;
+response.sendRedirect(url);
+
+var qrPrintConfiguration = {};
+qrPrintConfiguration.config_name = config_name;
+qrPrintConfiguration.layout = layout;
+qrPrintConfiguration.print_format = selected_print_format;
+qrPrintConfiguration.qrGenerated_table = confTable;
+qrPrintConfiguration.qrGenerated_id = confId;
+
+new x_cans_qr_code_mgt.QRCodeGeneratorUtils().generateQREvent(qrPrintConfiguration);]]></processing_script>
+        <sys_class_name>sys_ui_page</sys_class_name>
+        <sys_created_by>ivan.contreras</sys_created_by>
+        <sys_created_on>2023-01-13 15:28:32</sys_created_on>
+        <sys_id>5c56783e1b94a51460987597dc4bcba0</sys_id>
+        <sys_mod_count>4</sys_mod_count>
+        <sys_name>qr_print_configuration</sys_name>
+        <sys_package display_value="QR code management" source="x_cans_qr_code_mgt">64c4ac721b54a51460987597dc4bcb70</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="QR code management">64c4ac721b54a51460987597dc4bcb70</sys_scope>
+        <sys_update_name>sys_ui_page_5c56783e1b94a51460987597dc4bcba0</sys_update_name>
+        <sys_updated_by>ivan.contreras</sys_updated_by>
+        <sys_updated_on>2023-01-16 10:08:20</sys_updated_on>
+    </sys_ui_page>
+</record_update>

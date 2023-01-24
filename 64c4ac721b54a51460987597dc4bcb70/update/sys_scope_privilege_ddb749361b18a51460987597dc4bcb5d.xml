@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_scope_privilege">
+    <sys_scope_privilege action="INSERT_OR_UPDATE">
+        <operation>execute</operation>
+        <source_scope display_value="QR code management">64c4ac721b54a51460987597dc4bcb70</source_scope>
+        <status>allowed</status>
+        <sys_class_name>sys_scope_privilege</sys_class_name>
+        <sys_created_by>ivan.contreras</sys_created_by>
+        <sys_created_on>2023-01-13 16:37:40</sys_created_on>
+        <sys_id>ddb749361b18a51460987597dc4bcb5d</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Glide API: event management</sys_name>
+        <sys_package display_value="QR code management" source="x_cans_qr_code_mgt">64c4ac721b54a51460987597dc4bcb70</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="QR code management">64c4ac721b54a51460987597dc4bcb70</sys_scope>
+        <sys_update_name>sys_scope_privilege_ddb749361b18a51460987597dc4bcb5d</sys_update_name>
+        <sys_updated_by>ivan.contreras</sys_updated_by>
+        <sys_updated_on>2023-01-13 16:37:40</sys_updated_on>
+        <target_name>Glide API: event management</target_name>
+        <target_scope display_value="Global">global</target_scope>
+        <target_type>scriptable</target_type>
+    </sys_scope_privilege>
+</record_update>

@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>public</access>
+        <active>true</active>
+        <api_name>x_cans_qr_code_mgt.QRCodeGeneratorGridUtils</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description/>
+        <name>QRCodeGeneratorGridUtils</name>
+        <script><![CDATA[var QRCodeGeneratorGridUtils = Class.create();
+QRCodeGeneratorGridUtils.prototype = {
+    initialize: function(
+	qrGenerated_table, qrGenerated_id, printFormat, layout, configName, qrCodes, details_table) {
+		this.targetTable = qrGenerated_table;
+		this.targetId = qrGenerated_id;
+		this.printFormat = printFormat;
+		this.customVariables = [
+			"${QrCodeImg}",
+			"${QRCodeDisplayName}"
+		];
+		// 		this.templateTableName = WPConstants.TABLES.HTML_TEMPLATE;
+		// 		this.templateSysId = WPConstants.HTML_QR_CODES_GRID_TEMPLATE;
+		this.templateBody = '<div style="border: 0.1em solid #000; padding: .5em 1em;"><img style="width: 100%; height: 100%;" title="" src="${QrCodeImg}" alt="" align="baseline" border="" hspace="" vspace="" /><div style="margin-top: 1.2em; line-height: 1;"><div><span style="background-color: #dbf0eb; padding: 0.5em 0.3em 0 0.3em; border-radius: .1em;">${QRCodeDisplayName}</span></div></div></div>'; // better with dedicated table with html field !!
+		var instance = gs.getProperty('glide.servlet.uri');
+		this.qrCodes = qrCodes;
+		this.detailsTable = details_table;
+		this.layout = +layout || 4;
+		this.maxTextLength = 50;
+		var maxPaddingValue = 50;
+		this.paddingValue = Math.floor(maxPaddingValue / this.layout);
+		this.fileName = configName;
+		this._createBody(this.templateBody, instance);
+	},
+
+	generate: function() {
+		var pdfOptions = {
+			pageSize: 'A4',
+			generatePageNumber: 'false',
+			topOrBottomMargin: '10',
+			leftOrRightMargin: '10',
+		};
+
+// 		this._removeExistingAttachment(this.targetTable, this.targetId);
+// 		var htmlToPdf = new WPHtmlToPdfUtils();
+// 		htmlToPdf.generate(this.body, this.targetTable, this.targetId, this.fileName, pdfOptions);
+		
+		var pageProperties = new Object();
+        pageProperties['PageSize'] = pdfOptions['pageSize'] || 'A4';
+        pageProperties['GeneratePageNumber'] = pdfOptions['generatePageNumber'] || 'true';
+        pageProperties['TopOrBottomMargin'] = pdfOptions['topOrBottomMargin'] || '72';
+        pageProperties['LeftOrRightMargin'] = pdfOptions['leftOrRightMargin'] || '36';
+// 		gs.log(this.body);
+        var pdfGenerationAPI = new sn_pdfgeneratorutils.PDFGenerationAPI();
+        pdfGenerationAPI.convertToPDFWithHeaderFooter(this.body, this.targetTable, this.targetId, this.fileName, pageProperties);
+		
+		return true;
+	},
+
+
+	_createBody: function(templateBody, instance) {
+		var bodyStart = '<html><body><table style="max-width:1000px; width:100%; height:100%;  border-collapse: collapse;">';
+		var tableBody = this._getTableBody(templateBody);
+		var bodyEnd = '</table></body></html>';
+		this.body = bodyStart + tableBody + bodyEnd;
+		this.body = this.body.replace(/src="\//gi, 'src="' + instance);
+	},
+
+	_getTableBody: function(intialTemplate) {
+		var tableBody = '<tbody style="">';
+		var colCount = 0;
+		var rowCount = 0;
+		var noOfCols = this.layout;
+		var fontWidthFactor = 35;
+		var cellWidth = Math.floor(100 / noOfCols);
+		var fontSize = Number(cellWidth / fontWidthFactor).toFixed(2) + 'em';
+		var cellWidthInPercent = cellWidth + '%';
+		var self = this;
+
+		Object.keys(this.qrCodes).forEach(function(qrCodeSysID) {
+			if (colCount === 0) {
+				tableBody += '<tr>';
+			}
+			var borderSpaceStyle = self._getBorderSpaceStyle(colCount, rowCount, noOfCols);
+			tableBody += self._getTableCell(qrCodeSysID, intialTemplate, cellWidthInPercent, fontSize, borderSpaceStyle);
+			colCount++;
+			if (colCount >= noOfCols) {
+				self.body += '</tr>';
+				colCount = 0;
+				rowCount++;
+			}
+		});
+
+		tableBody += self._getPseudoCells(colCount, noOfCols);
+		tableBody += '</tbody>';
+		return tableBody;
+	},
+
+	_getBorderSpaceStyle: function(colCount, rowCount, pageMaxRowAndCol) {
+		var padding = this.paddingValue;
+		var borderStyle = 'border: 1px dashed black;';
+		var paddingStyle = 'padding: ' + 2 * padding + ' ' + padding + 'px;';
+		// page top row
+		if (rowCount % pageMaxRowAndCol === 0) {
+			borderStyle += 'border-top: 0;';
+		}
+		// page rightmost col
+		if (colCount === pageMaxRowAndCol - 1) {
+			borderStyle += 'border-right: 0;';
+		}
+		// page bottom row
+		if ((rowCount + 1) % pageMaxRowAndCol === 0) {
+			borderStyle += 'border-bottom: 0;';
+		}
+		// page leftmost col
+		if (colCount === 0) {
+			borderStyle += 'border-left: 0;';
+		}
+		return 'box-sizing: border-box; ' + borderStyle + ' ' + paddingStyle;
+	},
+
+	_getPseudoCells: function(colCount, noOfCols) {
+		var pseudoCells = '';
+		while (colCount < noOfCols) {
+			pseudoCells += '<td></td>';
+			colCount++;
+			if (colCount === noOfCols) {
+				pseudoCells += '</tr>';
+			}
+		}
+		return pseudoCells;
+	},
+
+	_getTableCell: function(qrCodeSysID, intialTemplate, cellWidthAndHeightInPercent, fontSize, borderSpaceStyle) {
+		var qrCodeImg = this.qrCodes[qrCodeSysID];
+		var detailData = this._getDetailsData(qrCodeSysID);
+		return '<td style="font-size:' + fontSize + '; width:' + cellWidthAndHeightInPercent + '; height:' + cellWidthAndHeightInPercent + '; ' + borderSpaceStyle + '">' + this._getQRCodeHtml(intialTemplate, qrCodeImg, detailData) + '</td>';
+	},
+
+	_getQRCodeHtml: function(intialTemplate, qrCodeImg, detailData) {
+		var template = intialTemplate;
+		template = template.replace(/\${QrCodeImg\}/gi, qrCodeImg);
+		template = template.replace(/\${QRCodeDisplayName\}/gi, this._clipLongText(detailData.ds_name, 1));
+// 		template = template.replace(/\${HardwareName\}/gi, this._clipLongText(detailData.hw_name, 1));
+// 		template = template.replace(/\${ModelName\}/gi, this._clipLongText(detailData.model_name, 1));
+// 		template = template.replace(/\${ModelType\}/gi, this._clipLongText(detailData.model_type, 0.5));
+		return template;
+	},
+
+	_clipLongText: function(text, multiplier) {
+		var maxTextLength = Math.floor(this.maxTextLength * multiplier);
+		return String(text).length > maxTextLength ? text.substr(0, maxTextLength) + '...' : text;
+	},
+
+	_getDetailsData: function(dtlSysId) {
+		var detailData = {};
+		var dtlGr = new GlideRecord(this.detailsTable);
+		dtlGr.addQuery('sys_id', dtlSysId);
+		dtlGr.query();
+		if (dtlGr.next()) {
+			detailData.ds_name = dtlGr.getDisplayValue()+"";
+		}
+		return detailData;
+	},
+
+	/**
+     * Remove existing attachment if exists
+     * @param {String} tableName
+     * @param {String} recordId
+     */
+	_removeExistingAttachment: function(tableName, recordId) {
+		var sysAttachment = new GlideSysAttachment();
+		var attachmentGr = new GlideRecord("sys_attachment");
+		attachmentGr.addQuery('table_name', tableName);
+		attachmentGr.query('table_sys_id', recordId);
+		while (attachmentGr.next())
+			sysAttachment.deleteAttachment(attachmentGr.getValue('sys_id'));
+	},
+	
+    type: 'QRCodeGeneratorGridUtils'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>ivan.contreras</sys_created_by>
+        <sys_created_on>2023-01-13 15:06:45</sys_created_on>
+        <sys_id>42b2f0f61b94a51460987597dc4bcb67</sys_id>
+        <sys_mod_count>6</sys_mod_count>
+        <sys_name>QRCodeGeneratorGridUtils</sys_name>
+        <sys_package display_value="QR code management" source="x_cans_qr_code_mgt">64c4ac721b54a51460987597dc4bcb70</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="QR code management">64c4ac721b54a51460987597dc4bcb70</sys_scope>
+        <sys_update_name>sys_script_include_42b2f0f61b94a51460987597dc4bcb67</sys_update_name>
+        <sys_updated_by>ivan.contreras</sys_updated_by>
+        <sys_updated_on>2023-01-16 11:01:08</sys_updated_on>
+    </sys_script_include>
+</record_update>
